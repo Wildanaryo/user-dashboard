@@ -1,118 +1,290 @@
-import Image from 'next/image'
-import { Inter } from 'next/font/google'
+import { Inter } from "next/font/google";
+import { useEffect, useState } from "react";
+import axios from "axios";
+import SearchIcon from "@/icon/searchIcon";
+import Head from "next/head";
 
-const inter = Inter({ subsets: ['latin'] })
+const inter = Inter({ subsets: ["latin"] });
 
 export default function Home() {
+  const [dataUser, setDataUser] = useState("");
+  const [dataSearch, setDataSearch] = useState("");
+  const [searchShow, setSearchShow] = useState(false);
+  const [sortConfig, setSortConfig] = useState({
+    key: null,
+    direction: "ascending",
+  });
+
+  const fetchData = async (num) => {
+    try {
+      const response = await axios.get(
+        `https://randomuser.me/api/?page=${num}&pageSize=10&results=10`
+      );
+      setDataUser(response.data.results);
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const searchData = async (name) => {
+    try {
+      const response = await axios.get(
+        `https://randomuser.me/api/?results=500`
+      );
+      // const data = response.data;
+      // console.log(response.data.results);
+
+      const filteredUser = response.data.results.filter(
+        (user) =>
+          user.name.first.toLowerCase() === name ||
+          user.name.last.toLowerCase() === name
+      );
+
+      setDataUser(filteredUser);
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const filterGender = async (gender) => {
+    try {
+      const response = await axios.get(
+        `https://randomuser.me/api/?gender=${gender}&results=10`
+      );
+      setDataUser(response.data.results);
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  function sortData(column) {
+    let direction = "ascending";
+    if (sortConfig.key === column && sortConfig.direction === "ascending") {
+      direction = "descending";
+    }
+
+    const sortedData = [...dataUser].sort((a, b) => {
+      const valueA = getNestedPropertyValue(a, column);
+      const valueB = getNestedPropertyValue(b, column);
+
+      if (valueA < valueB) return -1;
+      if (valueA > valueB) return 1;
+      return 0;
+    });
+
+    if (direction === "descending") {
+      sortedData.reverse();
+    }
+
+    setDataUser(sortedData);
+    setSortConfig({ key: column, direction });
+  }
+
+  function getNestedPropertyValue(obj, path) {
+    const keys = path.split(".");
+    return keys.reduce((value, key) => value[key], obj);
+  }
+
+  const handleSearchButton = () => {
+    searchData(dataSearch.toLowerCase());
+    setSearchShow(true);
+    setSortConfig({ key: null, direction: "ascending" });
+  };
+
+  const handleResetButton = () => {
+    setDataSearch("");
+    setSearchShow(false);
+    fetchData(1);
+  };
+
+  const handleJumpLink = (num) => {
+    fetchData(num);
+  };
+
+  const handleFilterGender = (gender) => {
+    filterGender(gender);
+    setSortConfig({ key: null, direction: "ascending" });
+  };
+
+  useEffect(() => {
+    if (!dataUser) {
+      fetchData(1);
+    }
+  }, []);
+
+  if (!dataUser) {
+    return null;
+  }
+
+  function formatTanggal(inputDate) {
+    const date = new Date(inputDate);
+
+    const day = date.getDate().toString().padStart(2, "0");
+    const month = (date.getMonth() + 1).toString().padStart(2, "0");
+    const year = date.getFullYear();
+    const hours = date.getHours().toString().padStart(2, "0");
+    const minutes = date.getMinutes().toString().padStart(2, "0");
+
+    const formattedDate = `${day}-${month}-${year} ${hours}:${minutes}`;
+
+    return formattedDate;
+  }
+
   return (
-    <main
-      className={`flex min-h-screen flex-col items-center justify-between p-24 ${inter.className}`}
+    <div
+      className={`flex min-h-screen flex-col items-center px-24 py-8 ${inter.className}`}
     >
-      <div className="z-10 max-w-5xl w-full items-center justify-between font-mono text-sm lg:flex">
-        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
-          Get started by editing&nbsp;
-          <code className="font-mono font-bold">src/pages/index.js</code>
-        </p>
-        <div className="fixed bottom-0 left-0 flex h-48 w-full items-end justify-center bg-gradient-to-t from-white via-white dark:from-black dark:via-black lg:static lg:h-auto lg:w-auto lg:bg-none">
-          <a
-            className="pointer-events-none flex place-items-center gap-2 p-8 lg:pointer-events-auto lg:p-0"
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            By{' '}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className="dark:invert"
-              width={100}
-              height={24}
-              priority
+      <Head>
+        <title>User Dashboard</title>
+      </Head>
+      <h1 className="text-3xl">User Dashboard</h1>
+      <div className="my-10 space-x-7 flex w-[1000px]">
+        <label className="block">
+          <span className="block">Search</span>
+          <div className="flex space-x-1">
+            <input
+              type="text"
+              className="mt-1 px-3 py-2 text-black bg-white border shadow-sm border-slate-300 placeholder-slate-400 focus:outline-none focus:border-sky-500 focus:ring-sky-500 block w-full rounded-md sm:text-sm focus:ring-1"
+              placeholder="Search..."
+              onChange={(e) => setDataSearch(e.target.value)}
             />
-          </a>
+            <button
+              className="bg-sky-500 mt-1 p-2 rounded-md"
+              onClick={handleSearchButton}
+            >
+              <SearchIcon width="16" fill="#fff" />
+            </button>
+          </div>
+        </label>
+        <label className="block">
+          <span className="block">Gender</span>
+          <div className="flex space-x-1">
+            <select
+              onChange={(e) => handleFilterGender(e.target.value)}
+              className="mt-1 px-3 py-2 text-black bg-white border shadow-sm border-slate-300 placeholder-slate-400 focus:outline-none focus:border-sky-500 focus:ring-sky-500 block w-full rounded-md sm:text-sm focus:ring-1"
+            >
+              <option value="All" selected>
+                All
+              </option>
+              <option value="female">Female</option>
+              <option value="male">Male</option>
+            </select>
+            <button
+              className="border w-48 mt-1 rounded-md"
+              onClick={handleResetButton}
+            >
+              Reset Filter
+            </button>
+          </div>
+        </label>
+      </div>
+      <table className="table-fixed w-[1000px]">
+        <thead>
+          <tr className="text-left bg-slate-700 border-b">
+            <th
+              role="button"
+              onClick={() => sortData("login.username")}
+              className="w-2/12 py-5"
+            >
+              <div className="flex justify-between">
+                <p>Username</p>
+                {sortConfig.key === "login.username" && (
+                  <span className="mr-4">
+                    {sortConfig.direction === "ascending" ? "↑" : "↓"}
+                  </span>
+                )}
+              </div>
+            </th>
+            <th
+              role="button"
+              onClick={() => sortData("name.first")}
+              className="w-2/12 py-5"
+            >
+              <div className="flex justify-between">
+                <p>Name</p>
+                {sortConfig.key === "name.first" && (
+                  <span className="mr-4">
+                    {sortConfig.direction === "ascending" ? "↑" : "↓"}
+                  </span>
+                )}
+              </div>
+            </th>
+            <th
+              role="button"
+              onClick={() => sortData("email")}
+              className="w-3/12 py-5"
+            >
+              <div className="flex justify-between">
+                <p>Email</p>
+                {sortConfig.key === "email" && (
+                  <span className="mr-4">
+                    {sortConfig.direction === "ascending" ? "↑" : "↓"}
+                  </span>
+                )}
+              </div>
+            </th>
+            <th
+              role="button"
+              onClick={() => sortData("gender")}
+              className="w-1/12 py-5"
+            >
+              <div className="flex justify-between">
+                <p>Gender</p>
+                {sortConfig.key === "gender" && (
+                  <span className="mr-4">
+                    {sortConfig.direction === "ascending" ? "↑" : "↓"}
+                  </span>
+                )}
+              </div>
+            </th>
+            <th
+              role="button"
+              onClick={() => sortData("registered.date")}
+              className="w-2/12 py-5"
+            >
+              <div className="flex justify-between">
+                <p>Registeration Date</p>
+                {sortConfig.key === "registered.date" && (
+                  <span className="mr-4">
+                    {sortConfig.direction === "ascending" ? "↑" : "↓"}
+                  </span>
+                )}
+              </div>
+            </th>
+          </tr>
+        </thead>
+        <tbody className="text-white">
+          {dataUser
+            ? dataUser.map((user, index) => (
+                <tr key={index} className="border-b">
+                  <td className="py-4">{user.login.username}</td>
+                  <td className="py-4">{`${user.name.first} ${user.name.last}`}</td>
+                  <td className="py-4">{user.email}</td>
+                  <td className="py-4">{user.gender}</td>
+                  <td className="py-4">
+                    {formatTanggal(user.registered.date)}
+                  </td>
+                </tr>
+              ))
+            : null}
+          {searchShow && dataUser.length === 0 ? (
+            <div className="py-4">there is no data match</div>
+          ) : null}
+        </tbody>
+      </table>
+      {searchShow ? null : (
+        <div className="py-4 space-x-2">
+          <button onClick={() => handleJumpLink(1)} className="border w-8 h-8">
+            1
+          </button>
+          <button onClick={() => handleJumpLink(2)} className="border w-8 h-8">
+            2
+          </button>
+          <button onClick={() => handleJumpLink(3)} className="border w-8 h-8">
+            3
+          </button>
         </div>
-      </div>
-
-      <div className="relative flex place-items-center before:absolute before:h-[300px] before:w-[480px] before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-20 after:h-[180px] after:w-[240px] after:translate-x-1/3 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-2xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700/10 after:dark:from-sky-900 after:dark:via-[#0141ff]/40 before:lg:h-[360px]">
-        <Image
-          className="relative dark:drop-shadow-[0_0_0.3rem_#ffffff70] dark:invert"
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
-      </div>
-
-      <div className="mb-32 grid text-center lg:max-w-5xl lg:w-full lg:mb-0 lg:grid-cols-4 lg:text-left">
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Docs{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Find in-depth information about Next.js features and API.
-          </p>
-        </a>
-
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Learn{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Learn about Next.js in an interactive course with&nbsp;quizzes!
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Templates{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Discover and deploy boilerplate example Next.js&nbsp;projects.
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Deploy{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
-      </div>
-    </main>
-  )
+      )}
+    </div>
+  );
 }
